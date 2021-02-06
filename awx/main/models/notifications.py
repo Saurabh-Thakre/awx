@@ -383,12 +383,14 @@ class JobNotificationMixin(object):
         and a url to the job run."""
         job_context = {'host_status_counts': {}}
         summary = None
-        if hasattr(self, 'job_host_summaries'):
-            summary = self.job_host_summaries.first()
-        if summary:
-            from awx.api.serializers import JobHostSummarySerializer
-            summary_data = JobHostSummarySerializer(summary).to_representation(summary)
-            job_context['host_status_counts'] = summary_data
+        if getattr(self, f'{self.model_to_str()}_events'):
+            from awx.main.models import Job
+            import awx
+            qs = self.get_event_queryset()
+            events = qs.only('event_data').filter(event='playbook_on_stats')
+            if qs:
+              summary = events.first().get_host_status_counts()
+            job_context['host_status_counts'] = summary
         context = {
             'job': job_context,
             'job_friendly_name': self.get_notification_friendly_name(),
